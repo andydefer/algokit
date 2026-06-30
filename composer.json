@@ -1,0 +1,33 @@
+{
+    "name": "andydefer/algokit",
+    "description": "AlgoKIT - Collection of probabilistic data structures for PHP",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Andy Kani",
+            "email": "andykanidimbu@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "andydefer/domain-structures": "^1.21"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5|^11.0|^12.0",
+        "mockery/mockery": "^1.6",
+        "laravel/pint": "^1.29"
+    },
+    "autoload": {
+        "psr-4": {
+            "AndyDefer\\AlgoKIT\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AndyDefer\\AlgoKIT\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
