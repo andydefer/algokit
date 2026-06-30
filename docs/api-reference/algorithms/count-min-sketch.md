@@ -44,13 +44,14 @@ $cms = new CountMinSketch($storage, 10000, 5, 'search_frequencies');
 
 ---
 
-### `add(string $value): void`
+### `add(string $value, ?string $context = null): void`
 
 Ajoute une occurrence d'une valeur.
 
 | Paramètre | Type | Description |
 |-----------|------|-------------|
 | `$value` | `string` | Valeur à compter |
+| `$context` | `string|null` | Contexte pour isoler les données (défaut: null) |
 
 **Retourne :** `void`
 
@@ -58,25 +59,27 @@ Ajoute une occurrence d'une valeur.
 ```php
 $cms->add('laravel');
 $cms->add('laravel');
-$cms->add('php');
-// 'laravel' a maintenant 2 occurrences, 'php' en a 1
+$cms->add('php', 'search_engine');
+// 'laravel' a maintenant 2 occurrences, 'php' en a 1 dans le contexte 'search_engine'
 ```
 
 ---
 
-### `count(string $value): int`
+### `count(string $value, ?string $context = null): int`
 
 Estime la fréquence d'une valeur.
 
 | Paramètre | Type | Description |
 |-----------|------|-------------|
 | `$value` | `string` | Valeur à compter |
+| `$context` | `string|null` | Contexte de la recherche (défaut: null) |
 
 **Retourne :** `int` - Estimation du nombre d'occurrences
 
 **Exemple :**
 ```php
 $freq = $cms->count('laravel'); // Retourne approximativement le nombre d'occurrences
+$freqContext = $cms->count('php', 'search_engine');
 ```
 
 ---
@@ -122,15 +125,20 @@ foreach ($results as $result) {
 
 ---
 
-### `clear(): void`
+### `clear(?string $context = null): void`
 
 Vide complètement le sketch.
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| `$context` | `string|null` | Contexte à vider (défaut: null = tout vider) |
 
 **Retourne :** `void`
 
 **Exemple :**
 ```php
-$cms->clear();
+$cms->clear(); // Vide tout
+$cms->clear('search_engine'); // Vide uniquement le contexte 'search_engine'
 ```
 
 ## Cas d'utilisation
@@ -156,221 +164,101 @@ echo "Fréquence de 'laravel': " . $cms->count('laravel') . "\n"; // ~2
 echo "Fréquence de 'javascript': " . $cms->count('javascript') . "\n"; // ~1
 ```
 
-### Cas 2 : Analyse de logs d'accès avec TopK
+### Cas 2 : Analyse par contexte (multi-sites)
 
 ```php
-use AndyDefer\AlgoKIT\Algorithms\CountMinSketch;
-use AndyDefer\AlgoKIT\Algorithms\TopK;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use AndyDefer\AlgoKIT\Collections\CountMinSketchCollection;
-use AndyDefer\AlgoKIT\Records\CountMinSketchRecord;
-
-class LogAnalyzer
+class SearchAnalytics
 {
     private CountMinSketch $cms;
-    private TopK $topK;
     
-    public function __construct(CountMinSketch $cms, TopK $topK)
+    public function __construct(CountMinSketch $cms)
     {
         $this->cms = $cms;
-        $this->topK = $topK;
     }
     
-    public function processLogs(array $logs): void
+    public function trackSearch(string $siteId, string $term): void
     {
-        $collection = new CountMinSketchCollection();
-        
-        foreach ($logs as $log) {
-            $ip = $log['ip'] ?? 'unknown';
-            $collection->add(new CountMinSketchRecord($ip));
-            $this->topK->add($ip);
-        }
-        
-        $this->cms->addBatch($collection);
+        // Track global
+        $this->cms->add($term);
+        // Track par site
+        $this->cms->add($term, $siteId);
     }
     
-    public function getIPFrequency(string $ip): int
+    public function getGlobalFrequency(string $term): int
     {
-        return $this->cms->count($ip);
+        return $this->cms->count($term);
     }
     
-    public function getTopIPs(int $limit = 10): array
+    public function getSiteFrequency(string $siteId, string $term): int
     {
-        $top = $this->topK->getTop();
-        $result = [];
-        
-        foreach ($top as $item) {
-            $result[] = [
-                'ip' => $item->value,
-                'count' => $item->count,
-                'estimated' => $this->cms->count($item->value)
-            ];
-        }
-        
-        return array_slice($result, 0, $limit);
+        return $this->cms->count($term, $siteId);
     }
 }
 
 // Utilisation
 $storage = new MemoryStorage();
-$cms = new CountMinSketch($storage, 10000, 5, 'log_analyzer');
-$topK = new TopK($storage, 10, 'top_ips');
+$cms = new CountMinSketch($storage, 100000, 5, 'search_analytics');
+$analytics = new SearchAnalytics($cms);
 
-$analyzer = new LogAnalyzer($cms, $topK);
+$analytics->trackSearch('site_a', 'php');
+$analytics->trackSearch('site_a', 'php');
+$analytics->trackSearch('site_b', 'php');
 
-$logs = [
-    ['ip' => '192.168.1.100', 'time' => '2024-01-01 10:00:00'],
-    ['ip' => '192.168.1.101', 'time' => '2024-01-01 10:01:00'],
-    ['ip' => '192.168.1.100', 'time' => '2024-01-01 10:02:00'],
-    ['ip' => '192.168.1.102', 'time' => '2024-01-01 10:03:00'],
-    ['ip' => '192.168.1.100', 'time' => '2024-01-01 10:04:00'],
-];
-
-$analyzer->processLogs($logs);
-
-echo "Fréquence de 192.168.1.100: " . $analyzer->getIPFrequency('192.168.1.100') . "\n";
-echo "Top IPs:\n";
-print_r($analyzer->getTopIPs(3));
+echo $analytics->getGlobalFrequency('php'); // ~3
+echo $analytics->getSiteFrequency('site_a', 'php'); // ~2
 ```
 
-### Cas 3 : Système de recommandation complet
+### Cas 3 : Système de recommandation
 
 ```php
-use AndyDefer\AlgoKIT\Algorithms\CountMinSketch;
-use AndyDefer\AlgoKIT\Algorithms\TopK;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-
 class RecommendationSystem
 {
     private CountMinSketch $cms;
-    private TopK $topK;
-    private array $productCatalog = [];
     
-    public function __construct(CountMinSketch $cms, TopK $topK)
+    public function __construct(CountMinSketch $cms)
     {
         $this->cms = $cms;
-        $this->topK = $topK;
-    }
-    
-    public function addProduct(string $productId, string $name, array $tags): void
-    {
-        $this->productCatalog[$productId] = [
-            'name' => $name,
-            'tags' => $tags
-        ];
     }
     
     public function trackView(string $userId, string $productId): void
     {
-        $key = "{$userId}:{$productId}";
-        $this->cms->add($key);
-        $this->topK->add($key);
+        // Track par utilisateur
+        $this->cms->add($productId, 'user_' . $userId);
+        // Track global
+        $this->cms->add($productId);
     }
     
-    public function getUserInterests(string $userId, int $limit = 5): array
+    public function getUserInterests(string $userId, array $products): array
     {
-        $top = $this->topK->getTop();
+        $collection = new CountMinSketchCollection();
+        foreach ($products as $productId) {
+            $collection->add(new CountMinSketchRecord($productId, 'user_' . $userId));
+        }
+        
+        $results = $this->cms->countBatch($collection);
         $interests = [];
         
-        foreach ($top as $item) {
-            if (str_starts_with($item->value, $userId . ':')) {
-                $productId = explode(':', $item->value)[1];
-                $frequency = $this->cms->count($item->value);
-                
-                if (isset($this->productCatalog[$productId])) {
-                    $interests[] = [
-                        'product_id' => $productId,
-                        'product_name' => $this->productCatalog[$productId]['name'],
-                        'views' => $frequency,
-                        'tags' => $this->productCatalog[$productId]['tags']
-                    ];
-                }
-                
-                if (count($interests) >= $limit) {
-                    break;
-                }
-            }
-        }
-        
-        return $interests;
-    }
-    
-    public function getRecommendations(string $userId, int $limit = 5): array
-    {
-        $interests = $this->getUserInterests($userId, 3);
-        $tags = [];
-        
-        foreach ($interests as $interest) {
-            $tags = array_merge($tags, $interest['tags']);
-        }
-        
-        $tagCounts = [];
-        foreach ($tags as $tag) {
-            if (!isset($tagCounts[$tag])) {
-                $tagCounts[$tag] = 0;
-            }
-            $tagCounts[$tag]++;
-        }
-        
-        arsort($tagCounts);
-        $topTags = array_slice(array_keys($tagCounts), 0, 3);
-        
-        $recommendations = [];
-        foreach ($this->productCatalog as $productId => $product) {
-            if (array_intersect($product['tags'], $topTags)) {
-                $recommendations[] = [
-                    'product_id' => $productId,
-                    'product_name' => $product['name'],
-                    'matching_tags' => array_intersect($product['tags'], $topTags)
+        foreach ($results as $result) {
+            if ($result->count > 0) {
+                $interests[] = [
+                    'product_id' => $result->value,
+                    'views' => $result->count
                 ];
             }
-            
-            if (count($recommendations) >= $limit) {
-                break;
-            }
         }
         
-        return $recommendations;
+        usort($interests, fn($a, $b) => $b['views'] <=> $a['views']);
+        return $interests;
     }
 }
-
-// Utilisation
-$storage = new MemoryStorage();
-$cms = new CountMinSketch($storage, 10000, 5, 'recommendations');
-$topK = new TopK($storage, 20, 'top_products');
-
-$recommender = new RecommendationSystem($cms, $topK);
-
-// Ajout de produits
-$recommender->addProduct('p1', 'Laptop', ['electronics', 'computer', 'gaming']);
-$recommender->addProduct('p2', 'Smartphone', ['electronics', 'mobile', 'communication']);
-$recommender->addProduct('p3', 'Headphones', ['electronics', 'audio', 'music']);
-$recommender->addProduct('p4', 'Book PHP', ['programming', 'php', 'web']);
-$recommender->addProduct('p5', 'Book Python', ['programming', 'python', 'ai']);
-
-// Tracking des vues
-$recommender->trackView('user_123', 'p1');
-$recommender->trackView('user_123', 'p1');
-$recommender->trackView('user_123', 'p2');
-$recommender->trackView('user_123', 'p4');
-
-// Récupération des intérêts
-$interests = $recommender->getUserInterests('user_123');
-echo "Intérêts de l'utilisateur:\n";
-print_r($interests);
-
-// Récupération des recommandations
-$recommendations = $recommender->getRecommendations('user_123');
-echo "\nRecommandations:\n";
-print_r($recommendations);
 ```
 
 ## Flux d'exécution
 
 ```
-add($value)
+add($value, $context)
     ↓
-getTable() → matrice de compteurs
+getTable($context) → matrice de compteurs
     ↓
 for each hash function (0 → depth)
     ↓
@@ -378,13 +266,13 @@ for each hash function (0 → depth)
     ↓
     table[$i][$index]++
     ↓
-saveTable($table)
+saveTable($table, $context)
 ```
 
 ```
-count($value)
+count($value, $context)
     ↓
-getTable() → matrice de compteurs
+getTable($context) → matrice de compteurs
     ↓
 min = PHP_INT_MAX
     ↓
@@ -424,7 +312,7 @@ $cms = new CountMinSketch($storage, 10000, 5, 'cms'); // Charge depuis storage
 CountMinSketch utilise des Records pour représenter les données :
 
 - `CountMinSketchRecord` : Représente une valeur à compter
-- `CountMinSketchResultRecord` : Représente un résultat de comptage
+- `CountMinSketchResultRecord` : Représente un résultat de comptage (inclut le contexte)
 
 ### Avec les Collections
 
@@ -432,6 +320,28 @@ CountMinSketch utilise des Collections typées :
 
 - `CountMinSketchCollection` : Collection de valeurs
 - `CountMinSketchResultCollection` : Collection de résultats
+
+### Avec TopK
+
+CountMinSketch peut être combiné avec TopK pour des analyses avancées :
+
+```php
+// TopK pour les éléments les plus fréquents
+$topK = new TopK($storage, 10, 'top');
+$topK->add('php');
+$topK->add('php');
+
+// CountMinSketch pour les fréquences exactes approximatives
+$cms = new CountMinSketch($storage, 10000, 5, 'freq');
+$cms->add('php');
+$cms->add('php');
+
+$top = $topK->getTop();
+foreach ($top as $item) {
+    $estimated = $cms->count($item->value);
+    echo "{$item->value}: exact={$item->count}, estimé={$estimated}\n";
+}
+```
 
 ## Performance
 
@@ -461,7 +371,6 @@ CountMinSketch utilise des Collections typées :
 declare(strict_types=1);
 
 use AndyDefer\AlgoKIT\Algorithms\CountMinSketch;
-use AndyDefer\AlgoKIT\Algorithms\TopK;
 use AndyDefer\AlgoKIT\Collections\CountMinSketchCollection;
 use AndyDefer\AlgoKIT\Records\CountMinSketchRecord;
 use AndyDefer\AlgoKIT\Storage\MemoryStorage;
@@ -469,73 +378,121 @@ use AndyDefer\AlgoKIT\Storage\MemoryStorage;
 // 1. Initialisation
 $storage = new MemoryStorage();
 $cms = new CountMinSketch($storage, 1000, 3, 'test_cms');
-$topK = new TopK($storage, 10, 'test_topk');
 
-// 2. Ajout de valeurs
+// 2. Ajout de valeurs avec contexte
 echo "Ajout de valeurs:\n";
-$values = ['apple', 'banana', 'apple', 'cherry', 'banana', 'apple', 'date'];
+$data = [
+    ['apple', 'fruits'],
+    ['banana', 'fruits'],
+    ['apple', 'fruits'],
+    ['php', 'languages'],
+    ['python', 'languages'],
+    ['php', 'languages'],
+    ['php', 'languages']
+];
 
-foreach ($values as $value) {
-    $cms->add($value);
-    $topK->add($value);
-    echo "  + $value\n";
+foreach ($data as [$value, $context]) {
+    $cms->add($value, $context);
+    echo "  + $value ($context)\n";
 }
 
-// 3. Comptage individuel
+// 3. Comptage individuel avec contexte
 echo "\nComptage individuel:\n";
-$testValues = ['apple', 'banana', 'cherry', 'date', 'elderberry'];
-foreach ($testValues as $value) {
-    $count = $cms->count($value);
-    $topCount = $topK->getTop()->toArray();
-    echo "  '$value': $count\n";
+$tests = [
+    ['apple', 'fruits', 2],
+    ['banana', 'fruits', 1],
+    ['php', 'languages', 3],
+    ['python', 'languages', 1],
+    ['php', 'fruits', 0],
+    ['ruby', 'languages', 0]
+];
+
+foreach ($tests as [$value, $context, $expected]) {
+    $count = $cms->count($value, $context);
+    echo "  '$value' ($context): $count (attendu: $expected)\n";
 }
 
 // 4. Comptage par lot
 echo "\nComptage par lot:\n";
 $collection = new CountMinSketchCollection();
-$collection->add(new CountMinSketchRecord('apple'));
-$collection->add(new CountMinSketchRecord('banana'));
-$collection->add(new CountMinSketchRecord('cherry'));
-$collection->add(new CountMinSketchRecord('elderberry'));
+$collection->add(new CountMinSketchRecord('apple', 'fruits'));
+$collection->add(new CountMinSketchRecord('php', 'languages'));
+$collection->add(new CountMinSketchRecord('ruby', 'languages'));
 
 $results = $cms->countBatch($collection);
 foreach ($results as $result) {
-    echo "  '{$result->value}': {$result->count}\n";
+    echo "  '{$result->value}' ({$result->context}): {$result->count}\n";
 }
 
 // 5. Ajout par lot
 echo "\nAjout par lot:\n";
 $newValues = new CountMinSketchCollection();
-$newValues->add(new CountMinSketchRecord('elderberry'));
-$newValues->add(new CountMinSketchRecord('elderberry'));
-$newValues->add(new CountMinSketchRecord('fig'));
+$newValues->add(new CountMinSketchRecord('cherry', 'fruits'));
+$newValues->add(new CountMinSketchRecord('cherry', 'fruits'));
+$newValues->add(new CountMinSketchRecord('ruby', 'languages'));
 
 $cms->addBatch($newValues);
-foreach ($newValues as $record) {
-    $topK->add($record->value);
-}
 echo "✓ 3 nouvelles occurrences ajoutées\n";
 
 // 6. Vérification finale
 echo "\nVérification finale:\n";
-$finalTests = ['apple', 'banana', 'elderberry', 'fig', 'grape'];
-foreach ($finalTests as $value) {
-    $count = $cms->count($value);
-    echo "  '$value': $count\n";
+$finalTests = [
+    ['cherry', 'fruits', 2],
+    ['ruby', 'languages', 1],
+    ['apple', 'fruits', 2]
+];
+
+foreach ($finalTests as [$value, $context, $expected]) {
+    $count = $cms->count($value, $context);
+    echo "  '$value' ($context): $count\n";
 }
 
-// 7. Top K avec CountMinSketch
-echo "\nTop K des valeurs les plus fréquentes:\n";
-$topItems = $topK->getTop();
-foreach ($topItems as $item) {
-    $estimated = $cms->count($item->value);
-    echo "  {$item->value}: exact={$item->count}, estimé={$estimated}\n";
-}
+// 7. Nettoyage
+$cms->clear('fruits');
+echo "\n✓ Contexte 'fruits' vidé\n";
 
-// 8. Nettoyage
-$cms->clear();
-$topK->clear();
-echo "\n✓ Structures vidées\n";
+$fruitCount = $cms->count('apple', 'fruits');
+echo "  'apple' (fruits): $fruitCount\n";
+
+$langCount = $cms->count('php', 'languages');
+echo "  'php' (languages): $langCount\n";
+```
+
+**Sortie attendue :**
+```
+Ajout de valeurs:
+  + apple (fruits)
+  + banana (fruits)
+  + apple (fruits)
+  + php (languages)
+  + python (languages)
+  + php (languages)
+  + php (languages)
+
+Comptage individuel:
+  'apple' (fruits): 2 (attendu: 2)
+  'banana' (fruits): 1 (attendu: 1)
+  'php' (languages): 3 (attendu: 3)
+  'python' (languages): 1 (attendu: 1)
+  'php' (fruits): 0 (attendu: 0)
+  'ruby' (languages): 0 (attendu: 0)
+
+Comptage par lot:
+  'apple' (fruits): 2
+  'php' (languages): 3
+  'ruby' (languages): 0
+
+Ajout par lot:
+✓ 3 nouvelles occurrences ajoutées
+
+Vérification finale:
+  'cherry' (fruits): 2
+  'ruby' (languages): 1
+  'apple' (fruits): 2
+
+✓ Contexte 'fruits' vidé
+  'apple' (fruits): 0
+  'php' (languages): 3
 ```
 
 ## Voir aussi

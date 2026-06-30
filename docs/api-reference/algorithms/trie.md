@@ -2,7 +2,7 @@
 
 ## Description
 
-Trie (ou arbre préfixe) est une structure de données arborescente pour stocker des chaînes de caractères. Elle permet de rechercher efficacement tous les mots commençant par un préfixe donné, ce qui la rend idéale pour l'autocomplétion et les suggestions en temps réel.
+Trie (ou arbre préfixe) est une structure de données arborescente pour stocker des chaînes de caractères. Elle permet de rechercher efficacement tous les mots commençant par un préfixe donné, ce qui la rend idéale pour l'autocomplétion et les suggestions en temps réel. Le support des contextes permet d'isoler les dictionnaires par catégorie.
 
 ## Hiérarchie / Implémentations
 
@@ -42,13 +42,14 @@ $trie = new Trie($storage, 'autocomplete');
 
 ---
 
-### `insert(string $word): void`
+### `insert(string $word, ?string $context = null): void`
 
 Insère un mot dans le trie.
 
 | Paramètre | Type | Description |
 |-----------|------|-------------|
 | `$word` | `string` | Mot à insérer |
+| `$context` | `string|null` | Contexte pour isoler les données (défaut: null) |
 
 **Retourne :** `void`
 
@@ -56,21 +57,22 @@ Insère un mot dans le trie.
 ```php
 $trie->insert('laravel');
 $trie->insert('laragon');
-$trie->insert('large');
+$trie->insert('bonjour', 'french');
 ```
 
 ---
 
-### `search(string $prefix, int $limit = 10): TrieResultCollection`
+### `search(string $prefix, ?string $context = null, int $limit = 10): TrieResultCollection`
 
 Recherche tous les mots commençant par un préfixe donné.
 
 | Paramètre | Type | Description |
 |-----------|------|-------------|
 | `$prefix` | `string` | Préfixe à rechercher |
+| `$context` | `string|null` | Contexte de la recherche (défaut: null) |
 | `$limit` | `int` | Nombre maximum de résultats (défaut: 10) |
 
-**Retourne :** `TrieResultCollection` - Collection des mots trouvés
+**Retourne :** `TrieResultCollection` - Collection des mots trouvés (incluant le contexte)
 
 **Exemple :**
 ```php
@@ -78,6 +80,9 @@ $results = $trie->search('lar', 5);
 foreach ($results as $result) {
     echo $result->word . "\n";
 }
+
+$frenchResults = $trie->search('bon', 'french');
+// Retourne uniquement les mots français commençant par 'bon'
 ```
 
 ---
@@ -111,7 +116,7 @@ Recherche plusieurs préfixes en lot.
 | `$collection` | `TrieCollection` | Collection de préfixes à rechercher |
 | `$limit` | `int` | Nombre maximum de résultats par préfixe (défaut: 10) |
 
-**Retourne :** `array<string, TrieResultCollection>` - Tableau associatif préfixe → résultats
+**Retourne :** `array<string, TrieResultCollection>` - Tableau associatif préfixe (ou contexte:préfixe) → résultats
 
 **Exemple :**
 ```php
@@ -170,10 +175,10 @@ echo "Suggestions pour 'p': " . implode(', ', autocomplete($trie, 'p')) . "\n";
 echo "Suggestions pour 'j': " . implode(', ', autocomplete($trie, 'j')) . "\n";
 ```
 
-### Cas 2 : Dictionnaire avec poids
+### Cas 2 : Dictionnaire multi-langues avec contexte
 
 ```php
-class WeightedDictionary
+class MultiLanguageDictionary
 {
     private Trie $trie;
     private array $weights = [];
@@ -183,20 +188,21 @@ class WeightedDictionary
         $this->trie = $trie;
     }
     
-    public function addWord(string $word, int $weight = 1): void
+    public function addWord(string $word, string $language, int $weight = 1): void
     {
-        $this->trie->insert($word);
-        $this->weights[$word] = ($this->weights[$word] ?? 0) + $weight;
+        $this->trie->insert($word, $language);
+        $key = $language . ':' . $word;
+        $this->weights[$key] = ($this->weights[$key] ?? 0) + $weight;
     }
     
-    public function suggest(string $prefix, int $limit = 10): array
+    public function suggest(string $prefix, string $language, int $limit = 10): array
     {
-        $results = $this->trie->search($prefix, $limit * 2);
+        $results = $this->trie->search($prefix, $language, $limit * 2);
         
         $suggestions = [];
         foreach ($results as $result) {
-            $word = $result->word;
-            $suggestions[$word] = $this->weights[$word] ?? 0;
+            $key = $language . ':' . $result->word;
+            $suggestions[$result->word] = $this->weights[$key] ?? 0;
         }
         
         arsort($suggestions);
@@ -206,18 +212,21 @@ class WeightedDictionary
 
 // Utilisation
 $storage = new MemoryStorage();
-$trie = new Trie($storage, 'weighted_dict');
-$dict = new WeightedDictionary($trie);
+$trie = new Trie($storage, 'multilingual_dict');
+$dict = new MultiLanguageDictionary($trie);
 
-// Ajout de mots avec poids
-$dict->addWord('laravel', 10);
-$dict->addWord('laragon', 5);
-$dict->addWord('large', 3);
-$dict->addWord('laptop', 8);
-$dict->addWord('php', 15);
+// Ajout de mots par langue
+$dict->addWord('bonjour', 'french', 10);
+$dict->addWord('salut', 'french', 8);
+$dict->addWord('hello', 'english', 15);
+$dict->addWord('hi', 'english', 12);
+$dict->addWord('hola', 'spanish', 5);
 
-echo "Suggestions pondérées pour 'la':\n";
-print_r($dict->suggest('la', 3));
+echo "Suggestions françaises pour 'bo':\n";
+print_r($dict->suggest('bo', 'french', 3));
+
+echo "\nSuggestions anglaises pour 'h':\n";
+print_r($dict->suggest('h', 'english', 3));
 ```
 
 ### Cas 3 : Moteur de recherche multi-préfixes
@@ -290,14 +299,80 @@ foreach ($results as $prefix => $words) {
 }
 ```
 
+### Cas 4 : Dictionnaire par catégorie (contexte avancé)
+
+```php
+class CategorizedDictionary
+{
+    private Trie $trie;
+    
+    public function __construct(Trie $trie)
+    {
+        $this->trie = $trie;
+    }
+    
+    public function addCategoryWord(string $word, string $category): void
+    {
+        $this->trie->insert($word, $category);
+    }
+    
+    public function addWordToMultipleCategories(string $word, array $categories): void
+    {
+        foreach ($categories as $category) {
+            $this->trie->insert($word, $category);
+        }
+    }
+    
+    public function searchInCategory(string $prefix, string $category, int $limit = 10): array
+    {
+        $results = $this->trie->search($prefix, $category, $limit);
+        return array_map(function($result) {
+            return $result->word;
+        }, $results->toArray());
+    }
+    
+    public function searchAllCategories(string $prefix, int $limit = 10): array
+    {
+        // Recherche sans contexte = tous les contextes
+        $results = $this->trie->search($prefix, null, $limit);
+        $grouped = [];
+        
+        foreach ($results as $result) {
+            $grouped[$result->context ?? 'global'][] = $result->word;
+        }
+        
+        return $grouped;
+    }
+}
+
+// Utilisation
+$storage = new MemoryStorage();
+$trie = new Trie($storage, 'categorized_dict');
+$dict = new CategorizedDictionary($trie);
+
+// Ajout par catégorie
+$dict->addCategoryWord('apple', 'fruits');
+$dict->addCategoryWord('banana', 'fruits');
+$dict->addCategoryWord('carrot', 'vegetables');
+$dict->addCategoryWord('php', 'programming');
+$dict->addCategoryWord('python', 'programming');
+$dict->addCategoryWord('apple', 'brands'); // Le même mot dans un autre contexte
+
+echo "Fruits en 'a': " . implode(', ', $dict->searchInCategory('a', 'fruits')) . "\n";
+echo "Programmation en 'p': " . implode(', ', $dict->searchInCategory('p', 'programming')) . "\n";
+
+echo "\nRecherche tous contextes 'a':\n";
+print_r($dict->searchAllCategories('a'));
+```
+
 ## Flux d'exécution
 
 ```
-insert($word)
+insert($word, $context)
     ↓
 getRoot() → nœud racine
     ↓
-node = &root
+node = &getContextNode($root, $context)
     ↓
 for each char in word
     ↓
@@ -315,11 +390,11 @@ saveRoot($root)
 ```
 
 ```
-search($prefix, $limit)
+search($prefix, $context, $limit)
     ↓
 getRoot() → nœud racine
     ↓
-findNode($root, $prefix) → node
+findNode($root, $prefix, $context) → node
     ↓
 node === null? → return empty collection
     ↓
@@ -327,7 +402,7 @@ collectWords($node, $prefix, $limit)
     ↓
 for each word in node->words
     ↓
-    add to results
+    add to results with context
     ↓
 for each child
     ↓
@@ -363,7 +438,7 @@ $trie = new Trie($storage, 'trie'); // Charge depuis storage
 Trie utilise des Records pour représenter les données :
 
 - `TrieRecord` : Représente un mot à insérer
-- `TrieResultRecord` : Représente un résultat de recherche
+- `TrieResultRecord` : Représente un résultat de recherche (inclut le contexte)
 
 ### Avec les Collections
 
@@ -371,6 +446,24 @@ Trie utilise des Collections typées :
 
 - `TrieCollection` : Collection de mots
 - `TrieResultCollection` : Collection de résultats
+
+### Structure avec contexte
+
+```
+Storage Key: 'trie'
+├── root: {           // Données globales (sans contexte)
+│   ├── children: []
+│   └── words: []
+│   }
+├── french: {         // Contexte 'french'
+│   ├── children: []
+│   └── words: []
+│   }
+└── english: {        // Contexte 'english'
+    ├── children: []
+    └── words: []
+    }
+```
 
 ## Performance
 
@@ -386,6 +479,7 @@ Trie utilise des Collections typées :
 - Les mots partagent des préfixes communs
 - La recherche est limitée par le nombre de résultats
 - La structure est optimisée pour les lectures
+- Les contextes isolent les données pour des recherches ciblées
 
 ## Compatibilité
 
@@ -411,150 +505,142 @@ use AndyDefer\AlgoKIT\Storage\MemoryStorage;
 $storage = new MemoryStorage();
 $trie = new Trie($storage, 'test_trie');
 
-echo "=== Test du Trie ===\n\n";
+echo "=== Test du Trie avec contextes ===\n\n";
 
-// 2. Insertion de mots
+// 2. Insertion de mots avec contextes
 echo "2. Insertion de mots:\n";
-$words = [
-    'laravel', 'laragon', 'large', 'laptop', 'lightning',
-    'php', 'python', 'perl', 'pascal', 'puppet',
-    'javascript', 'java', 'jupyter', 'json'
+$data = [
+    ['laravel', 'framework'],
+    ['laragon', 'framework'],
+    ['large', 'english'],
+    ['laptop', 'english'],
+    ['bonjour', 'french'],
+    ['bonsoir', 'french'],
+    ['hello', 'english'],
+    ['php', 'language'],
+    ['python', 'language']
 ];
 
-foreach ($words as $word) {
-    $trie->insert($word);
-    echo "  + $word\n";
+foreach ($data as [$word, $context]) {
+    $trie->insert($word, $context);
+    echo "  + $word ($context)\n";
 }
 
 echo "\n";
 
-// 3. Recherche simple
-echo "3. Recherche simple:\n";
-$prefixes = ['la', 'p', 'j'];
+// 3. Recherche simple avec contexte
+echo "3. Recherche avec contexte:\n";
+$searches = [
+    ['lar', 'framework'],
+    ['bon', 'french'],
+    ['hel', 'english'],
+    ['p', 'language']
+];
 
-foreach ($prefixes as $prefix) {
-    $results = $trie->search($prefix, 5);
+foreach ($searches as [$prefix, $context]) {
+    $results = $trie->search($prefix, $context, 5);
     $words = array_map(function($result) {
         return $result->word;
     }, $results->toArray());
-    echo "  '$prefix': " . implode(', ', $words) . "\n";
+    echo "  '$prefix' ($context): " . implode(', ', $words) . "\n";
 }
 
 echo "\n";
 
-// 4. Recherche avec limite
-echo "4. Recherche avec limite:\n";
-$results = $trie->search('p', 3);
+// 4. Recherche sans contexte (tous les contextes)
+echo "4. Recherche sans contexte (tous):\n";
+$results = $trie->search('la', null, 10);
 $words = array_map(function($result) {
-    return $result->word;
+    return $result->word . ' (' . ($result->context ?? 'global') . ')';
 }, $results->toArray());
-echo "  'p' (limite 3): " . implode(', ', $words) . "\n";
+echo "  'la': " . implode(', ', $words) . "\n";
 
 echo "\n";
 
-// 5. Insertion par lot
-echo "5. Insertion par lot:\n";
+// 5. Insertion par lot avec contexte
+echo "5. Insertion par lot avec contexte:\n";
 $collection = new TrieCollection();
-$newWords = ['react', 'vue', 'angular', 'svelte'];
-
-foreach ($newWords as $word) {
-    $collection->add(new TrieRecord($word));
-}
+$collection->add(new TrieRecord('react', 'framework'));
+$collection->add(new TrieRecord('vue', 'framework'));
+$collection->add(new TrieRecord('angular', 'framework'));
 
 $trie->insertBatch($collection);
-echo "  + " . implode(', ', $newWords) . " (insérés en lot)\n";
+echo "  + react, vue, angular (framework)\n";
 
 echo "\n";
 
 // 6. Recherche par lot
 echo "6. Recherche par lot:\n";
 $searchCollection = new TrieCollection();
-$searchWords = ['r', 'v', 'a', 's'];
-
-foreach ($searchWords as $word) {
-    $searchCollection->add(new TrieRecord($word));
-}
+$searchCollection->add(new TrieRecord('r', 'framework'));
+$searchCollection->add(new TrieRecord('v', 'framework'));
+$searchCollection->add(new TrieRecord('a', 'framework'));
 
 $results = $trie->searchBatch($searchCollection, 3);
-foreach ($results as $prefix => $resultCollection) {
+foreach ($results as $key => $resultCollection) {
     $words = array_map(function($result) {
         return $result->word;
     }, $resultCollection->toArray());
-    echo "  '$prefix': " . implode(', ', $words) . "\n";
+    echo "  '$key': " . implode(', ', $words) . "\n";
 }
 
 echo "\n";
 
-// 7. Persistance
+// 7. Test de persistance
 echo "7. Test de persistance:\n";
 $trie2 = new Trie($storage, 'test_trie');
-$results = $trie2->search('l', 5);
+$results = $trie2->search('la', 'framework', 5);
 $words = array_map(function($result) {
     return $result->word;
 }, $results->toArray());
-echo "  Mots en 'l' après récupération: " . implode(', ', $words) . "\n";
+echo "  Mots en 'la' (framework) après récupération: " . implode(', ', $words) . "\n";
 
 echo "\n";
 
-// 8. Statistiques
-echo "8. Statistiques:\n";
-$allResults = $trie->search('', 1000);
-echo "  Total des mots indexés: " . count($allResults) . "\n";
-
-echo "\n";
-
-// 9. Nettoyage
+// 8. Nettoyage
 $trie->clear();
-echo "9. ✓ Trie vidé\n";
+echo "8. ✓ Trie vidé\n";
 
-$emptyResults = $trie->search('l');
+$emptyResults = $trie->search('la');
 echo "  Mots après vidage: " . count($emptyResults) . "\n";
 ```
 
 **Sortie attendue :**
 ```
-=== Test du Trie ===
+=== Test du Trie avec contextes ===
 
 2. Insertion de mots:
-  + laravel
-  + laragon
-  + large
-  + laptop
-  + lightning
-  + php
-  + python
-  + perl
-  + pascal
-  + puppet
-  + javascript
-  + java
-  + jupyter
-  + json
+  + laravel (framework)
+  + laragon (framework)
+  + large (english)
+  + laptop (english)
+  + bonjour (french)
+  + bonsoir (french)
+  + hello (english)
+  + php (language)
+  + python (language)
 
-3. Recherche simple:
-  'la': laravel, laragon, large, laptop
-  'p': php, python, perl, pascal, puppet
-  'j': javascript, java, jupyter, json
+3. Recherche avec contexte:
+  'lar' (framework): laravel, laragon
+  'bon' (french): bonjour, bonsoir
+  'hel' (english): hello
+  'p' (language): php, python
 
-4. Recherche avec limite:
-  'p' (limite 3): php, python, perl
+4. Recherche sans contexte (tous):
+  'la': laravel (framework), laragon (framework), large (english), laptop (english)
 
-5. Insertion par lot:
-  + react, vue, angular, svelte (insérés en lot)
+5. Insertion par lot avec contexte:
+  + react, vue, angular (framework)
 
 6. Recherche par lot:
   'r': react
   'v': vue
   'a': angular
-  's': svelte
 
 7. Test de persistance:
-  Mots en 'l' après récupération: laravel, laragon, large, laptop, lightning
+  Mots en 'la' (framework) après récupération: laravel, laragon
 
-8. Statistiques:
-  Total des mots indexés: 18
-
-9. ✓ Trie vidé
+8. ✓ Trie vidé
   Mots après vidage: 0
 ```
 
