@@ -6,7 +6,7 @@ use AndyDefer\AlgoKIT\Collections\BloomFilterCollection;
 use AndyDefer\AlgoKIT\Collections\BloomFilterResultCollection;
 use AndyDefer\AlgoKIT\Contracts\Algorithms\BloomFilterInterface;
 use AndyDefer\AlgoKIT\Records\BloomFilterResultRecord;
-use AndyDefer\AlgoKIT\Storage\StorageInterface;
+use AndyDefer\StorageKit\Contracts\Storage\StorageInterface;
 
 class BloomFilter implements BloomFilterInterface
 {

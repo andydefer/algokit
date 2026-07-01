@@ -6,7 +6,7 @@ use AndyDefer\AlgoKIT\Collections\TopKCollection;
 use AndyDefer\AlgoKIT\Collections\TopKResultCollection;
 use AndyDefer\AlgoKIT\Contracts\Algorithms\TopKInterface;
 use AndyDefer\AlgoKIT\Records\TopKResultRecord;
-use AndyDefer\AlgoKIT\Storage\StorageInterface;
+use AndyDefer\StorageKit\Contracts\Storage\StorageInterface;
 
 class TopK implements TopKInterface
 {

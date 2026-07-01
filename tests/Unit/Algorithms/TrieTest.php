@@ -6,17 +6,17 @@ use AndyDefer\AlgoKIT\Algorithms\Trie;
 use AndyDefer\AlgoKIT\Collections\TrieCollection;
 use AndyDefer\AlgoKIT\Collections\TrieResultCollection;
 use AndyDefer\AlgoKIT\Records\TrieRecord;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use PHPUnit\Framework\TestCase;
+use AndyDefer\AlgoKIT\Tests\JsonlStorageTestCase;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class TrieTest extends TestCase
+class TrieTest extends JsonlStorageTestCase
 {
     private Trie $trie;
 
     protected function setUp(): void
     {
-        $storage = new MemoryStorage;
-        $this->trie = new Trie($storage, 'test_trie');
+        parent::setUp();
+        $this->trie = new Trie($this->getStorage(), 'test_trie');
     }
 
     public function test_insert_and_search(): void

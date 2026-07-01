@@ -7,7 +7,7 @@ use AndyDefer\AlgoKIT\Collections\BKTreeResultCollection;
 use AndyDefer\AlgoKIT\Contracts\Algorithms\TreeInterface;
 use AndyDefer\AlgoKIT\Records\BKTreeNodeRecord;
 use AndyDefer\AlgoKIT\Records\BKTreeResultRecord;
-use AndyDefer\AlgoKIT\Storage\StorageInterface;
+use AndyDefer\StorageKit\Contracts\Storage\StorageInterface;
 
 class BKTree implements TreeInterface
 {

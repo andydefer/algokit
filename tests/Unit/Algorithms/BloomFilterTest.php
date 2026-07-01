@@ -6,17 +6,23 @@ use AndyDefer\AlgoKIT\Algorithms\BloomFilter;
 use AndyDefer\AlgoKIT\Collections\BloomFilterCollection;
 use AndyDefer\AlgoKIT\Collections\BloomFilterResultCollection;
 use AndyDefer\AlgoKIT\Records\BloomFilterRecord;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use PHPUnit\Framework\TestCase;
+use AndyDefer\AlgoKIT\Tests\CacheStorageTestCase;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class BloomFilterTest extends TestCase
+class BloomFilterTest extends CacheStorageTestCase
 {
     private BloomFilter $bloom;
 
     protected function setUp(): void
     {
-        $storage = new MemoryStorage;
-        $this->bloom = new BloomFilter($storage, 1000, 3, 'test_bloom');
+        parent::setUp();
+
+        $this->bloom = new BloomFilter($this->getStorage(), 1000, 3, 'test_bloom');
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
     }
 
     public function test_insert_and_exists(): void

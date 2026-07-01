@@ -5,17 +5,23 @@ namespace AndyDefer\AlgoKIT\Tests\Unit\Algorithms;
 use AndyDefer\AlgoKIT\Algorithms\BKTree;
 use AndyDefer\AlgoKIT\Collections\BKTreeResultCollection;
 use AndyDefer\AlgoKIT\Records\BKTreeResultRecord;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use PHPUnit\Framework\TestCase;
+use AndyDefer\AlgoKIT\Tests\CacheStorageTestCase;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class BKTreeTest extends TestCase
+class BKTreeTest extends CacheStorageTestCase
 {
     private BKTree $bkTree;
 
     protected function setUp(): void
     {
-        $storage = new MemoryStorage;
-        $this->bkTree = new BKTree($storage, 'test_bktree');
+        parent::setUp();
+
+        $this->bkTree = new BKTree($this->getStorage(), 'test_bktree');
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
     }
 
     public function test_insert_and_search(): void

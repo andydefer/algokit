@@ -6,17 +6,43 @@ use AndyDefer\AlgoKIT\Algorithms\CountMinSketch;
 use AndyDefer\AlgoKIT\Collections\CountMinSketchCollection;
 use AndyDefer\AlgoKIT\Collections\CountMinSketchResultCollection;
 use AndyDefer\AlgoKIT\Records\CountMinSketchRecord;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use PHPUnit\Framework\TestCase;
+use AndyDefer\AlgoKIT\Tests\JsonlStorageTestCase;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class CountMinSketchTest extends TestCase
+class CountMinSketchTest extends JsonlStorageTestCase
 {
     private CountMinSketch $cms;
 
     protected function setUp(): void
     {
-        $storage = new MemoryStorage;
-        $this->cms = new CountMinSketch($storage, 1000, 3, 'test_cms');
+        parent::setUp();
+
+        $this->cms = new CountMinSketch($this->getStorage(), 1000, 3, 'test_cms');
+    }
+
+    protected function tearDown(): void
+    {
+        // Nettoyer les données
+        parent::tearDown();
+        $this->cms->clear();
+    }
+
+    private function removeDirectory(string $directory): void
+    {
+        if (! is_dir($directory)) {
+            return;
+        }
+
+        $items = array_diff(scandir($directory), ['.', '..']);
+        foreach ($items as $item) {
+            $path = $directory.DIRECTORY_SEPARATOR.$item;
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($directory);
     }
 
     public function test_add_and_count(): void

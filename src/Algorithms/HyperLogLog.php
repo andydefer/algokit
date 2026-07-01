@@ -6,7 +6,7 @@ use AndyDefer\AlgoKIT\Collections\HyperLogLogCollection;
 use AndyDefer\AlgoKIT\Collections\HyperLogLogResultCollection;
 use AndyDefer\AlgoKIT\Contracts\Algorithms\HyperLogLogInterface;
 use AndyDefer\AlgoKIT\Records\HyperLogLogResultRecord;
-use AndyDefer\AlgoKIT\Storage\StorageInterface;
+use AndyDefer\StorageKit\Contracts\Storage\StorageInterface;
 
 class HyperLogLog implements HyperLogLogInterface
 {

@@ -6,30 +6,24 @@ use AndyDefer\AlgoKIT\Algorithms\HyperLogLog;
 use AndyDefer\AlgoKIT\Collections\HyperLogLogCollection;
 use AndyDefer\AlgoKIT\Collections\HyperLogLogResultCollection;
 use AndyDefer\AlgoKIT\Records\HyperLogLogRecord;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use PHPUnit\Framework\TestCase;
+use AndyDefer\AlgoKIT\Tests\CacheStorageTestCase;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class HyperLogLogTest extends TestCase
+class HyperLogLogTest extends CacheStorageTestCase
 {
     private HyperLogLog $hll;
 
-    private MemoryStorage $storage;
-
     protected function setUp(): void
     {
-        $this->storage = new MemoryStorage;
-        // Utiliser une précision plus petite pour les tests (8 = 256 registres)
-        $this->hll = new HyperLogLog($this->storage, 8, 'test_hll');
+        parent::setUp();
+        $this->hll = new HyperLogLog($this->getStorage(), 8, 'test_hll');
     }
 
     protected function tearDown(): void
     {
+        parent::tearDown();
         $this->hll->clear();
-        // Nettoyer les clés du storage
-        $keys = ['test_hll', 'test_hll_context1', 'test_hll_context2', 'test_hll_global'];
-        foreach ($keys as $key) {
-            $this->storage->delete($key);
-        }
+
     }
 
     public function test_add_and_count(): void

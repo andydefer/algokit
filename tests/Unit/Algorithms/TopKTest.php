@@ -6,17 +6,17 @@ use AndyDefer\AlgoKIT\Algorithms\TopK;
 use AndyDefer\AlgoKIT\Collections\TopKCollection;
 use AndyDefer\AlgoKIT\Collections\TopKResultCollection;
 use AndyDefer\AlgoKIT\Records\TopKRecord;
-use AndyDefer\AlgoKIT\Storage\MemoryStorage;
-use PHPUnit\Framework\TestCase;
+use AndyDefer\AlgoKIT\Tests\CacheStorageTestCase;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class TopKTest extends TestCase
+class TopKTest extends CacheStorageTestCase
 {
     private TopK $topK;
 
     protected function setUp(): void
     {
-        $storage = new MemoryStorage;
-        $this->topK = new TopK($storage, 3, 'test_topk');
+        parent::setUp();
+        $this->topK = new TopK($this->getStorage(), 3, 'test_topk');
     }
 
     public function test_add_and_get_top(): void

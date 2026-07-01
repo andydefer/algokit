@@ -6,7 +6,7 @@ use AndyDefer\AlgoKIT\Collections\TrieCollection;
 use AndyDefer\AlgoKIT\Collections\TrieResultCollection;
 use AndyDefer\AlgoKIT\Contracts\Algorithms\TrieInterface;
 use AndyDefer\AlgoKIT\Records\TrieResultRecord;
-use AndyDefer\AlgoKIT\Storage\StorageInterface;
+use AndyDefer\StorageKit\Contracts\Storage\StorageInterface;
 
 class Trie implements TrieInterface
 {
