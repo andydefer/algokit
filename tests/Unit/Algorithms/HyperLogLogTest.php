@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace AndyDefer\AlgoKIT\Tests\Unit\Algorithms;
 
 use AndyDefer\AlgoKIT\Algorithms\HyperLogLog;
 use AndyDefer\AlgoKIT\Collections\HyperLogLogCollection;
 use AndyDefer\AlgoKIT\Collections\HyperLogLogResultCollection;
 use AndyDefer\AlgoKIT\Records\HyperLogLogRecord;
-use AndyDefer\AlgoKIT\Tests\CacheStorageTestCase;
+use AndyDefer\AlgoKIT\Tests\JsonlStorageTestCase;
 use AndyDefer\StorageKit\Storage\MemoryStorage;
 
-class HyperLogLogTest extends CacheStorageTestCase
+final class HyperLogLogTest extends JsonlStorageTestCase
 {
     private HyperLogLog $hll;
 
@@ -23,76 +25,74 @@ class HyperLogLogTest extends CacheStorageTestCase
     {
         parent::tearDown();
         $this->hll->clear();
-
     }
 
     public function test_add_and_count(): void
     {
-
+        // Arrange
         $values = ['a', 'b', 'c', 'd', 'e'];
 
+        // Act
         foreach ($values as $value) {
             $this->hll->add($value);
         }
 
         $count = $this->hll->count();
 
-        // HyperLogLog est approximatif, on vérifie que le résultat est proche de 5
+        // Assert
         $this->assertGreaterThanOrEqual(4, $count);
         $this->assertLessThanOrEqual(8, $count);
     }
 
     public function test_add_and_count_with_context(): void
     {
-
-        // Ajout avec contextes
+        // Arrange
         $this->hll->add('a', 'context1');
         $this->hll->add('b', 'context1');
         $this->hll->add('c', 'context1');
         $this->hll->add('d', 'context2');
         $this->hll->add('e', 'context2');
 
-        // Vérifier les contextes
+        // Act
         $count1 = $this->hll->count('context1');
         $count2 = $this->hll->count('context2');
         $countGlobal = $this->hll->count();
 
-        // context1 a 3 éléments uniques
+        // Assert
         $this->assertGreaterThanOrEqual(2, $count1);
         $this->assertLessThanOrEqual(5, $count1);
 
-        // context2 a 2 éléments uniques
         $this->assertGreaterThanOrEqual(1, $count2);
         $this->assertLessThanOrEqual(4, $count2);
 
-        // Global a 5 éléments uniques
         $this->assertGreaterThanOrEqual(4, $countGlobal);
         $this->assertLessThanOrEqual(8, $countGlobal);
     }
 
     public function test_duplicates(): void
     {
-
+        // Arrange
         $values = ['a', 'a', 'a', 'b', 'b', 'c'];
 
+        // Act
         foreach ($values as $value) {
             $this->hll->add($value);
         }
 
         $count = $this->hll->count();
 
-        // 3 éléments uniques
+        // Assert
         $this->assertGreaterThanOrEqual(2, $count);
         $this->assertLessThanOrEqual(5, $count);
     }
 
     public function test_large_set(): void
     {
-
+        // Arrange
         $storage = new MemoryStorage;
-        // Précision 16 pour une meilleure précision
         $hll = new HyperLogLog($storage, 16, 'test_hll_precise');
 
+        // Act
         for ($i = 0; $i < 1000; $i++) {
             $value = 'value_'.$i;
             $hll->add($value);
@@ -100,7 +100,7 @@ class HyperLogLogTest extends CacheStorageTestCase
 
         $count = $hll->count();
 
-        // 1000 éléments uniques, erreur ~1.6% avec precision 16
+        // Assert
         $this->assertGreaterThan(900, $count);
         $this->assertLessThan(1100, $count);
 
@@ -109,33 +109,36 @@ class HyperLogLogTest extends CacheStorageTestCase
 
     public function test_clear(): void
     {
-
+        // Arrange
         $this->hll->add('a');
         $this->hll->add('b');
 
+        // Act
         $countBefore = $this->hll->count();
-
-        $this->assertGreaterThan(0, $countBefore);
-
         $this->hll->clear();
         $countAfter = $this->hll->count();
 
-        $this->assertEquals(0, $countAfter);
+        // Assert
+        $this->assertGreaterThan(0, $countBefore);
+        $this->assertSame(0, $countAfter);
     }
 
     public function test_persistence(): void
     {
-
+        // Arrange
         $storage = new MemoryStorage;
+        $key = 'persistent_hll';
 
-        $hll1 = new HyperLogLog($storage, 8, 'persistent_hll');
+        $hll1 = new HyperLogLog($storage, 8, $key);
         $hll1->add('a');
         $hll1->add('b');
         $hll1->add('c');
 
-        $hll2 = new HyperLogLog($storage, 8, 'persistent_hll');
+        // Act
+        $hll2 = new HyperLogLog($storage, 8, $key);
         $count = $hll2->count();
 
+        // Assert
         $this->assertGreaterThanOrEqual(2, $count);
         $this->assertLessThanOrEqual(5, $count);
 
@@ -144,35 +147,38 @@ class HyperLogLogTest extends CacheStorageTestCase
 
     public function test_add_batch(): void
     {
-
+        // Arrange
         $collection = new HyperLogLogCollection;
         $collection->add(new HyperLogLogRecord('a'));
         $collection->add(new HyperLogLogRecord('b'));
         $collection->add(new HyperLogLogRecord('c'));
-        $collection->add(new HyperLogLogRecord('a')); // Duplicate
+        $collection->add(new HyperLogLogRecord('a'));
 
+        // Act
         $this->hll->addBatch($collection);
 
         $count = $this->hll->count();
 
-        // 3 éléments uniques
+        // Assert
         $this->assertGreaterThanOrEqual(2, $count);
         $this->assertLessThanOrEqual(5, $count);
     }
 
     public function test_add_batch_with_context(): void
     {
-
+        // Arrange
         $collection = new HyperLogLogCollection;
         $collection->add(new HyperLogLogRecord('a', 'context1'));
         $collection->add(new HyperLogLogRecord('b', 'context1'));
         $collection->add(new HyperLogLogRecord('c', 'context2'));
 
+        // Act
         $this->hll->addBatch($collection);
 
         $count1 = $this->hll->count('context1');
         $count2 = $this->hll->count('context2');
 
+        // Assert
         $this->assertGreaterThanOrEqual(1, $count1);
         $this->assertLessThanOrEqual(4, $count1);
 
@@ -182,59 +188,58 @@ class HyperLogLogTest extends CacheStorageTestCase
 
     public function test_add_batch_with_empty_collection(): void
     {
-
+        // Arrange
         $collection = new HyperLogLogCollection;
-        $this->hll->addBatch($collection);
 
+        // Act
+        $this->hll->addBatch($collection);
         $count = $this->hll->count();
 
-        $this->assertEquals(0, $count);
+        // Assert
+        $this->assertSame(0, $count);
     }
 
     public function test_count_batch(): void
     {
-
-        // Ajout avec les mêmes contextes que le countBatch
+        // Arrange
         $this->hll->add('a', 'context1');
         $this->hll->add('b', 'context2');
         $this->hll->add('c', 'context3');
-
-        // 🔥 DEBUG : Vérifier le count de chaque contexte
 
         $collection = new HyperLogLogCollection;
         $collection->add(new HyperLogLogRecord('x', 'context1'));
         $collection->add(new HyperLogLogRecord('y', 'context2'));
         $collection->add(new HyperLogLogRecord('z', 'context3'));
 
+        // Act
         $results = $this->hll->countBatch($collection);
 
+        // Assert
         $this->assertInstanceOf(HyperLogLogResultCollection::class, $results);
         $this->assertCount(3, $results);
 
         $items = $results->toArray();
-
-        foreach ($items as $item) {
-        }
-
         $this->assertGreaterThanOrEqual(1, $items[0]->count);
-        $this->assertEquals('context1', $items[0]->context);
+        $this->assertSame('context1', $items[0]->context);
 
         $this->assertGreaterThanOrEqual(1, $items[1]->count);
-        $this->assertEquals('context2', $items[1]->context);
+        $this->assertSame('context2', $items[1]->context);
 
         $this->assertGreaterThanOrEqual(1, $items[2]->count);
-        $this->assertEquals('context3', $items[2]->context);
+        $this->assertSame('context3', $items[2]->context);
     }
 
     public function test_count_batch_with_empty_collection(): void
     {
-
+        // Arrange
         $collection = new HyperLogLogCollection;
+
+        // Act
         $results = $this->hll->countBatch($collection);
 
+        // Assert
         $this->assertInstanceOf(HyperLogLogResultCollection::class, $results);
         $this->assertCount(0, $results);
         $this->assertEmpty($results);
-
     }
 }

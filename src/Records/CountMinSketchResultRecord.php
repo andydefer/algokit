@@ -1,14 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace AndyDefer\AlgoKIT\Records;
 
 use AndyDefer\DomainStructures\Abstracts\AbstractRecord;
 
-class CountMinSketchResultRecord extends AbstractRecord
+/**
+ * Record representing a frequency result from Count-Min Sketch.
+ *
+ * Contains the value, its estimated frequency, and optional context.
+ */
+final class CountMinSketchResultRecord extends AbstractRecord
 {
     public function __construct(
-        public string $value,
-        public int $count,
-        public ?string $context = null
+        public readonly string $value,
+        public readonly int $count,
+        public readonly ?string $context = null,
     ) {}
 }

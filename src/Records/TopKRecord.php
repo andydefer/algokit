@@ -1,14 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace AndyDefer\AlgoKIT\Records;
 
 use AndyDefer\DomainStructures\Abstracts\AbstractRecord;
 
-class TopKRecord extends AbstractRecord
+/**
+ * Record representing a value to be added to Top-K tracker.
+ *
+ * Contains the value, increment amount, and optional context.
+ */
+final class TopKRecord extends AbstractRecord
 {
     public function __construct(
-        public string $value,
-        public int $increment = 1,
-        public ?string $context = null
+        public readonly string $value,
+        public readonly int $increment = 1,
+        public readonly ?string $context = null,
     ) {}
 }
