@@ -15,6 +15,7 @@
    - [CountMinSketch - Comptage de fréquence](#countminsketch---comptage-de-fréquence)
    - [HyperLogLog - Comptage d'éléments uniques](#hyperloglog---comptage-déléments-uniques)
    - [TopK - Éléments les plus fréquents](#topk---éléments-les-plus-fréquents)
+   - [InvertedIndex - Index inversé](#invertedindex---index-inversé)
 5. [Cas d'usage réels](#cas-dusage-réels)
 6. [Persistance](#persistance)
 7. [Performance](#performance)
@@ -25,26 +26,6 @@
 ## Introduction
 
 **AlgoKIT** est une bibliothèque PHP qui implémente des structures de données probabilistes et algorithmiques optimisées pour le traitement de données à grande échelle. Elle permet de résoudre des problèmes complexes (comptage de millions d'éléments, recherche en temps réel, analyse de flux) avec une consommation mémoire minimale.
-
-### Philosophie
-
-| Problème | Solution classique | Solution AlgoKIT |
-|----------|-------------------|------------------|
-| Compter 10M d'IP uniques | Array de 10M éléments (500MB) | HyperLogLog (64KB) |
-| Suggestions en temps réel | Scanner tous les mots (lent) | Trie (O(1) par caractère) |
-| Vérifier des URLs crawlées | Base de données (lente) | BloomFilter (O(k)) |
-| Top 10 des recherches | Tri de millions de logs (lourd) | TopK (mémoire constante) |
-
-### Les 6 structures clés
-
-| Structure | Rôle | Complexité | Cas d'usage |
-|-----------|------|------------|-------------|
-| **Trie** | Autocomplétion | O(L) | Suggestions de recherche, dictionnaire |
-| **BKTree** | Correction orthographique | O(n × log n) | "Vous avez voulu dire..." |
-| **BloomFilter** | Test d'existence | O(k) | URLs crawlées, cache bloqué |
-| **CountMinSketch** | Comptage de fréquence | O(d) | Analyse de logs, trending |
-| **HyperLogLog** | Comptage d'éléments uniques | O(1) | Visiteurs uniques, distincts |
-| **TopK** | Éléments les plus fréquents | O(k) | Classements, tendances |
 
 ---
 
@@ -450,6 +431,79 @@ foreach ($topK->getTop() as $rank => $item) {
 //   #1 php: 14
 //   #2 laravel: 7
 //   #3 golang: 3
+```
+
+### InvertedIndex - Index inversé
+
+**Description :** Structure de données qui associe des termes (mots, n-grammes, ou tokens) aux documents qui les contiennent. Permet une recherche plein texte rapide et efficace.
+
+**Théorie :** L'index inversé fonctionne comme une table de correspondance : pour chaque terme, on stocke la liste des documents où il apparaît. La recherche est alors un simple accès à cette table (O(1) par terme).
+
+**Propriétés fondamentales :**
+- ✅ **Recherche rapide** : O(1) par terme
+- ✅ **Persistance** : Sauvegarde automatique via StorageInterface
+- ✅ **Batch operations** : Ajout et recherche par lot
+- ✅ **Statistiques** : Suivi des fréquences et de la taille de l'index
+- ✅ **Suppression** : Suppression de documents ou de termes individuels
+
+**Utilisation typique :** Moteurs de recherche, indexation de documents, systèmes de tagging.
+
+```php
+use AndyDefer\AlgoKIT\Algorithms\InvertedIndex;
+use AndyDefer\AlgoKIT\Records\InvertedIndexRecord;
+use AndyDefer\AlgoKIT\Collections\InvertedIndexCollection;
+use AndyDefer\StorageKit\Storage\MemoryStorage;
+
+$storage = new MemoryStorage();
+$index = new InvertedIndex($storage, 'document_index');
+
+// Indexation de documents
+$documents = [
+    ['id' => 'doc_1', 'tokens' => ['php', 'laravel', 'framework']],
+    ['id' => 'doc_2', 'tokens' => ['php', 'python', 'programming']],
+    ['id' => 'doc_3', 'tokens' => ['laravel', 'vuejs', 'javascript']],
+];
+
+$collection = new InvertedIndexCollection();
+foreach ($documents as $doc) {
+    $collection->add(InvertedIndexRecord::from([
+        'document_id' => $doc['id'],
+        'tokens' => $doc['tokens'],
+    ]));
+}
+$index->addBatch($collection);
+
+// Recherche simple
+$results = $index->search('php');
+echo "Documents contenant 'php' : " . implode(', ', $results->toArray()) . "\n";
+// Sortie : doc_1, doc_2
+
+// Recherche batch
+use AndyDefer\AlgoKIT\Collections\InvertedIndexSearchCollection;
+use AndyDefer\AlgoKIT\Records\InvertedIndexSearchRecord;
+
+$search = new InvertedIndexSearchCollection();
+$search->add(InvertedIndexSearchRecord::from(['token' => 'php']));
+$search->add(InvertedIndexSearchRecord::from(['token' => 'laravel']));
+
+$results = $index->searchBatch($search);
+foreach ($results as $result) {
+    echo "'{$result->token}' → " . implode(', ', $result->document_ids->toArray()) . "\n";
+}
+// Sortie :
+// 'php' → doc_1, doc_2
+// 'laravel' → doc_1, doc_3
+
+// Statistiques
+$stats = $index->getStats();
+echo "Tokens uniques : {$stats->total_tokens}\n";
+echo "Entrées totales : {$stats->total_document_entries}\n";
+echo "Fréquence max : {$stats->max_token_frequency}\n";
+
+// Suppression
+$index->remove('doc_1');
+$stats = $index->getStats();
+echo "Tokens après suppression : {$stats->total_tokens}\n";
 ```
 
 ---
@@ -1200,70 +1254,41 @@ $trie = new Trie($storage, 'persistent_trie');
 
 ### Comparatif des structures
 
-| Structure | Insertion | Recherche | Mémoire | Précision | Idéal pour |
-|-----------|-----------|-----------|---------|-----------|------------|
-| Trie | O(L) | O(L + M) | Élevée | 100% | Autocomplétion |
-| BKTree | O(log n) | O(n) | Moyenne | 100% | Correction orthographique |
-| BloomFilter | O(k) | O(k) | Très faible | ~99% | Test d'existence |
-| CountMinSketch | O(d) | O(d) | Très faible | ~95% | Comptage de fréquence |
-| HyperLogLog | O(1) | O(m) | Très faible | ~98% | Éléments uniques |
-| TopK | O(k) | O(k) | Faible | 100% | Top fréquents |
-
-### Recommandations
-
-| Besoin | Structure recommandée |
-|--------|----------------------|
-| Précision absolue | Trie, BKTree, TopK |
-| Mémoire limitée | BloomFilter, CountMinSketch, HyperLogLog |
-| Flux massifs | CountMinSketch, HyperLogLog |
-| Recherche temps réel | Trie, BloomFilter |
-| Correction orthographique | BKTree |
-| Comptage d'occurrences | CountMinSketch |
-| Éléments uniques | HyperLogLog |
-| Classement | TopK |
+| Structure | Insertion | Recherche | Mémoire | Idéal pour |
+|-----------|-----------|-----------|---------|------------|
+| Trie | O(L) | O(L + M) | Élevée | Autocomplétion |
+| BKTree | O(log n) | O(n) | Moyenne |  Correction orthographique |
+| BloomFilter | O(k) | O(k) | Très faible |  Test d'existence |
+| CountMinSketch | O(d) | O(d) | Très faible |  Comptage de fréquence |
+| HyperLogLog | O(1) | O(m) | Très faible |Éléments uniques |
+| TopK | O(k) | O(k) | Faible |  Top fréquents |
+| InvertedIndex | O(n) | O(1) | Moyenne | Recherche plein texte |
 
 ---
 
-## API Reference
 
-### Structures
+### Philosophie
 
-- [Trie](docs/api-reference/algorithms/trie.md) - Autocomplétion et recherche par préfixe
-- [BKTree](docs/api-reference/algorithms/bk-tree.md) - Correction orthographique et recherche floue
-- [BloomFilter](docs/api-reference/algorithms/bloom-filter.md) - Test probabiliste d'appartenance
-- [CountMinSketch](docs/api-reference/algorithms/count-min-sketch.md) - Comptage probabiliste de fréquences
-- [HyperLogLog](docs/api-reference/algorithms/hyper-log-log.md) - Estimation de cardinalité
-- [TopK](docs/api-reference/algorithms/top-k.md) - Suivi des éléments les plus fréquents
+| Problème | Solution classique | Solution AlgoKIT |
+|----------|-------------------|------------------|
+| Compter 10M d'IP uniques | Array de 10M éléments (500MB) | HyperLogLog (64KB) |
+| Suggestions en temps réel | Scanner tous les mots (lent) | Trie (O(1) par caractère) |
+| Vérifier des URLs crawlées | Base de données (lente) | BloomFilter (O(k)) |
+| Top 10 des recherches | Tri de millions de logs (lourd) | TopK (mémoire constante) |
+| Recherche plein texte | Scanner tous les documents (lent) | InvertedIndex (O(1) par terme) |
 
-### Interfaces
+### Les 7 structures clés
 
-- `StorageInterface` - Interface de persistance
-- `TrieInterface` - Interface du Trie
-- `BloomFilterInterface` - Interface du BloomFilter
-- `CountMinSketchInterface` - Interface du CountMinSketch
-- `HyperLogLogInterface` - Interface du HyperLogLog
-- `TopKInterface` - Interface du TopK
-- `TreeInterface` - Interface du BKTree
+| Structure | Rôle | Complexité | Cas d'usage |
+|-----------|------|------------|-------------|
+| **Trie** | Autocomplétion | O(L) | Suggestions de recherche, dictionnaire |
+| **BKTree** | Correction orthographique | O(n × log n) | "Vous avez voulu dire..." |
+| **BloomFilter** | Test d'existence | O(k) | URLs crawlées, cache bloqué |
+| **CountMinSketch** | Comptage de fréquence | O(d) | Analyse de logs, trending |
+| **HyperLogLog** | Comptage d'éléments uniques | O(1) | Visiteurs uniques, distincts |
+| **TopK** | Éléments les plus fréquents | O(k) | Classements, tendances |
+| **InvertedIndex** | Index inversé | O(1) | Recherche plein texte, indexation |
 
-### Collections
-
-- `TrieCollection` / `TrieResultCollection`
-- `BloomFilterCollection` / `BloomFilterResultCollection`
-- `CountMinSketchCollection` / `CountMinSketchResultCollection`
-- `HyperLogLogCollection` / `HyperLogLogResultCollection`
-- `TopKCollection` / `TopKResultCollection`
-- `BKTreeNodeCollection` / `BKTreeResultCollection`
-
-### Records
-
-- `TrieRecord` / `TrieResultRecord`
-- `BloomFilterRecord` / `BloomFilterResultRecord`
-- `CountMinSketchRecord` / `CountMinSketchResultRecord`
-- `HyperLogLogRecord` / `HyperLogLogResultRecord`
-- `TopKRecord` / `TopKResultRecord`
-- `BKTreeNodeRecord` / `BKTreeResultRecord`
-
----
 
 ## License
 
