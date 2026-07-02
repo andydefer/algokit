@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9e57010bb4eb52154f7d18ad21600574",
+    "content-hash": "db612126e3860ebd0e7e656c96895d64",
     "packages": [
         {
             "name": "andydefer/domain-structures",
@@ -205,16 +205,16 @@
         },
         {
             "name": "andydefer/storage-kit",
-            "version": "v0.3.0",
+            "version": "v0.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/andydefer/storage-kit.git",
-                "reference": "9ee6ccdaea79502a1f66442bf9f7f4331a835d44"
+                "reference": "c1f99fa14aab363a863515204bc87cbc694146e7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/andydefer/storage-kit/zipball/9ee6ccdaea79502a1f66442bf9f7f4331a835d44",
-                "reference": "9ee6ccdaea79502a1f66442bf9f7f4331a835d44",
+                "url": "https://api.github.com/repos/andydefer/storage-kit/zipball/c1f99fa14aab363a863515204bc87cbc694146e7",
+                "reference": "c1f99fa14aab363a863515204bc87cbc694146e7",
                 "shasum": ""
             },
             "require": {
@@ -247,9 +247,9 @@
             "description": "Storage adapters : Memory, JSONL, and Cache",
             "support": {
                 "issues": "https://github.com/andydefer/storage-kit/issues",
-                "source": "https://github.com/andydefer/storage-kit/tree/v0.3.0"
+                "source": "https://github.com/andydefer/storage-kit/tree/v0.4.0"
             },
-            "time": "2026-07-01T12:10:19+00:00"
+            "time": "2026-07-02T05:50:17+00:00"
         },
         {
             "name": "phpfastcache/phpfastcache",
