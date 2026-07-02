@@ -157,6 +157,59 @@ final class Trie implements TrieInterface
         $this->storage->delete($this->key);
     }
 
+    // Dans la classe Trie
+
+    /**
+     * Returns the total number of words stored in the trie.
+     *
+     * @param  string|null  $context  Optional context to count
+     * @return int Total number of words
+     */
+    public function count(?string $context = null): int
+    {
+        $root = $this->getRoot();
+
+        if ($context !== null) {
+            if (! isset($root[$context])) {
+                return 0;
+            }
+            $node = $root[$context];
+
+            return $this->countWordsInNode($node);
+        }
+
+        $total = $this->countWordsInNode($root['root']);
+
+        // Compter les mots dans tous les contextes
+        foreach ($root as $key => $value) {
+            if ($key === 'root') {
+                continue;
+            }
+            if (is_array($value) && isset($value['words'])) {
+                $total += $this->countWordsInNode($value);
+            }
+        }
+
+        return $total;
+    }
+
+    /**
+     * Counts all words under a given node.
+     *
+     * @param  array  $node  The node to count words from
+     * @return int Number of words
+     */
+    private function countWordsInNode(array $node): int
+    {
+        $count = count($node['words'] ?? []);
+
+        foreach ($node['children'] ?? [] as $childNode) {
+            $count += $this->countWordsInNode($childNode);
+        }
+
+        return $count;
+    }
+
     /**
      * Initializes the storage with empty trie structure.
      */

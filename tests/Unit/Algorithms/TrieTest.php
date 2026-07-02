@@ -221,4 +221,59 @@ final class TrieTest extends SqliteStorageTestCase
         $this->assertEmpty($frenchResults);
         $this->assertEmpty($englishResults);
     }
+
+    // Dans les tests TrieTest
+
+    public function test_count_returns_total_words(): void
+    {
+        // Arrange
+        $words = ['laravel', 'laragon', 'large', 'laptop', 'php', 'python'];
+        foreach ($words as $word) {
+            $this->trie->insert($word);
+        }
+
+        // Act
+        $count = $this->trie->count();
+
+        // Assert
+        $this->assertEquals(6, $count);
+    }
+
+    public function test_count_with_context(): void
+    {
+        // Arrange
+        $this->trie->insert('bonjour', 'french');
+        $this->trie->insert('hello', 'english');
+        $this->trie->insert('merci', 'french');
+        $this->trie->insert('thank_you', 'english');
+
+        // Act
+        $frenchCount = $this->trie->count('french');
+        $englishCount = $this->trie->count('english');
+
+        // Assert
+        $this->assertEquals(2, $frenchCount);
+        $this->assertEquals(2, $englishCount);
+    }
+
+    public function test_count_with_empty_trie(): void
+    {
+        // Act
+        $count = $this->trie->count();
+
+        // Assert
+        $this->assertEquals(0, $count);
+    }
+
+    public function test_count_with_non_existent_context(): void
+    {
+        // Arrange
+        $this->trie->insert('laravel');
+
+        // Act
+        $count = $this->trie->count('non_existent');
+
+        // Assert
+        $this->assertEquals(0, $count);
+    }
 }

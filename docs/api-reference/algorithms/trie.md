@@ -27,6 +27,7 @@ Le Trie répond à la question **"Quels mots commencent par ce préfixe ?"** en 
 - ✅ **Partage de mémoire** : Les préfixes communs ne sont stockés qu'une fois
 - ✅ **Persistance** : Sauvegarde automatique dans le storage
 - ✅ **Contexte** : Isolation des données par contexte
+- ✅ **Comptage** : Obtention rapide du nombre total de mots
 - ⚠️ **Mémoire** : Peut être plus gourmand qu'une simple liste pour des mots courts
 
 ## Installation
@@ -158,6 +159,24 @@ Supprime toutes les données du trie.
 **Exemple :**
 ```php
 $trie->clear(); // Réinitialise complètement
+```
+
+---
+
+### `count(?string $context = null): int` *(Nouveau)*
+
+Retourne le nombre total de mots stockés dans le trie.
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| `$context` | `string|null` | Contexte optionnel pour compter uniquement les mots de ce contexte |
+
+**Retourne :** `int` - Nombre total de mots
+
+**Exemple :**
+```php
+$total = $trie->count(); // Tous les mots
+$frenchCount = $trie->count('french'); // Uniquement les mots français
 ```
 
 ---
@@ -577,6 +596,30 @@ startingNode === null ?
 Retourner collection
 ```
 
+### Comptage des mots
+
+```
+count($context)
+    ↓
+getRoot() → Récupérer la racine
+    ↓
+$context !== null ?
+    ├── OUI → $node = $root[$context] ?? null
+    │          Si $node === null → retourner 0
+    │          Sinon → countWordsInNode($node)
+    └── NON → countWordsInNode($root['root']) + 
+               contextes (sauf 'root')
+                ↓
+countWordsInNode($node)
+    ↓
+$count = count($node['words'])
+    ↓
+Pour chaque enfant :
+    $count += countWordsInNode($childNode)
+    ↓
+Retourner $count
+```
+
 ### Parcours récursif de collecte
 
 ```
@@ -682,6 +725,7 @@ function suggestWithCorrection($query) {
 |-----------|------------|-------------|
 | `insert()` | O(L) | L = longueur du mot |
 | `search()` | O(L + M) | L = longueur du préfixe, M = mots trouvés |
+| `count()` | O(N) | N = nombre de nœuds (peut être optimisé avec cache) |
 | `insertBatch()` | O(N × L) | N = nombre de mots |
 | `searchBatch()` | O(P × (L + M)) | P = nombre de préfixes |
 
@@ -726,7 +770,12 @@ foreach ($words as $word) {
     echo "  + $word\n";
 }
 
-// 3. Recherche par préfixe
+// 3. Comptage des mots
+echo "\n📊 Comptage des mots :\n";
+$total = $trie->count();
+echo "  Total : $total mots\n";
+
+// 4. Recherche par préfixe
 echo "\n🔍 Recherche par préfixe :\n";
 $prefixes = ['la', 'py', 'p'];
 
@@ -736,7 +785,7 @@ foreach ($prefixes as $prefix) {
     echo "  '$prefix' → " . implode(', ', $words) . "\n";
 }
 
-// 4. Insertion avec contexte
+// 5. Insertion avec contexte
 echo "\n📚 Insertion avec contexte :\n";
 $trie->insert('php', 'language');
 $trie->insert('phpstorm', 'ide');
@@ -747,7 +796,13 @@ echo "  + phpstorm (ide)\n";
 echo "  + phpunit (tool)\n";
 echo "  + javascript (language)\n";
 
-// 5. Recherche par contexte
+// 6. Comptage par contexte
+echo "\n📊 Comptage par contexte :\n";
+echo "  language : " . $trie->count('language') . " mots\n";
+echo "  ide : " . $trie->count('ide') . " mots\n";
+echo "  tool : " . $trie->count('tool') . " mots\n";
+
+// 7. Recherche par contexte
 echo "\n🔎 Recherche par contexte :\n";
 $contexts = ['language', 'ide', 'tool'];
 
@@ -758,7 +813,7 @@ foreach ($contexts as $context) {
     echo "  $context ($count) : " . implode(', ', $words) . "\n";
 }
 
-// 6. Opérations batch
+// 8. Opérations batch
 echo "\n📦 Opérations batch :\n";
 
 // Insertion batch
@@ -782,13 +837,13 @@ foreach ($results as $key => $resultCollection) {
     echo "  $key → " . implode(', ', $words) . "\n";
 }
 
-// 7. Limite des résultats
+// 9. Limite des résultats
 echo "\n⏱️ Limite des résultats :\n";
 $results = $trie->search('p', null, 2);
 $words = array_map(fn($r) => $r->word, $results->toArray());
 echo "  'p' (limit=2) → " . implode(', ', $words) . "\n";
 
-// 8. Nettoyage
+// 10. Nettoyage
 echo "\n🧹 Nettoyage...\n";
 $trie->clear();
 echo "  ✓ Trie vidé\n";
@@ -808,6 +863,9 @@ echo "  Recherche après nettoyage : " . count($empty) . " résultats\n";
 //   + laragon
 //   + laptop
 // 
+// 📊 Comptage des mots :
+//   Total : 6 mots
+// 
 // 🔍 Recherche par préfixe :
 //   'la' → laravel, laragon, laptop
 //   'py' → python
@@ -818,6 +876,11 @@ echo "  Recherche après nettoyage : " . count($empty) . " résultats\n";
 //   + phpstorm (ide)
 //   + phpunit (tool)
 //   + javascript (language)
+// 
+// 📊 Comptage par contexte :
+//   language : 2 mots
+//   ide : 1 mots
+//   tool : 1 mots
 // 
 // 🔎 Recherche par contexte :
 //   language (1) : php

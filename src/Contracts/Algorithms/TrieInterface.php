@@ -49,6 +49,15 @@ interface TrieInterface
      */
     public function searchBatch(TrieCollection $collection, int $limit = 10): array;
 
+    // Dans l'interface TrieInterface
+    /**
+     * Returns the total number of words stored in the trie.
+     *
+     * @param  string|null  $context  Optional context to count
+     * @return int Total number of words
+     */
+    public function count(?string $context = null): int;
+
     /**
      * Clears all data from the trie.
      */
