@@ -1,6 +1,6 @@
 {
     "name": "andydefer/algokit",
-    "description": "AlgoKIT - Collection of probabilistic data structures for PHP",
+    "description": "AlgoKIT - Probabilistic data structures and algorithms for large-scale data processing in PHP",
     "type": "library",
     "license": "MIT",
     "authors": [
