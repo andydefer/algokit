@@ -1248,7 +1248,7 @@ $trie = new Trie($storage, 'persistent_trie');
 // Les données sont persistées dans Redis
 ```
 
----
+---a
 
 ## Performance
 
