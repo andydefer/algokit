@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "df691b95b54cc7838d99043c8bb95ab4",
+    "content-hash": "044a93291c32cac99972d9a5e355e5b6",
     "packages": [
         {
             "name": "andydefer/domain-structures",
@@ -59,20 +59,20 @@
         },
         {
             "name": "andydefer/php-jsonl",
-            "version": "v0.9.1",
+            "version": "v0.10.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/andydefer/php-jsonl.git",
-                "reference": "dd91f1c822951e79eb5b05d1b24b3a4915533cf1"
+                "reference": "e7c02b92e00478a488cb55834502c9b8cc1b35a5"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/andydefer/php-jsonl/zipball/dd91f1c822951e79eb5b05d1b24b3a4915533cf1",
-                "reference": "dd91f1c822951e79eb5b05d1b24b3a4915533cf1",
+                "url": "https://api.github.com/repos/andydefer/php-jsonl/zipball/e7c02b92e00478a488cb55834502c9b8cc1b35a5",
+                "reference": "e7c02b92e00478a488cb55834502c9b8cc1b35a5",
                 "shasum": ""
             },
             "require": {
-                "andydefer/php-services": "^1.4",
+                "andydefer/php-services": "^1.5",
                 "php": "^8.2"
             },
             "require-dev": {
@@ -104,13 +104,13 @@
             "description": "High-performance JSONL (JSON Lines) file management library with temporal and key-based storage strategies, automatic batching, and cache expiration",
             "support": {
                 "issues": "https://github.com/andydefer/php-jsonl/issues",
-                "source": "https://github.com/andydefer/php-jsonl/tree/v0.9.1"
+                "source": "https://github.com/andydefer/php-jsonl/tree/v0.10.0"
             },
-            "time": "2026-07-09T14:56:53+00:00"
+            "time": "2026-07-09T15:18:43+00:00"
         },
         {
             "name": "andydefer/php-services",
-            "version": "v1.4.1",
+            "version": "v1.5.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/andydefer/php-services.git",
@@ -154,7 +154,7 @@
             "description": "Collection of reusable services for PHP and Laravel applications including model transformation, caching, and common business logic",
             "support": {
                 "issues": "https://github.com/andydefer/php-services/issues",
-                "source": "https://github.com/andydefer/php-services/tree/v1.4.1"
+                "source": "https://github.com/andydefer/php-services/tree/v1.5.0"
             },
             "time": "2026-07-09T14:54:30+00:00"
         },
@@ -207,20 +207,20 @@
         },
         {
             "name": "andydefer/storage-kit",
-            "version": "v0.6.0",
+            "version": "v0.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/andydefer/storage-kit.git",
-                "reference": "69a06ae8b3d3c80aff88f89b31c53f26c2903b89"
+                "reference": "78d3e8f814c4237fea7b75b688fdb0b86925aee4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/andydefer/storage-kit/zipball/69a06ae8b3d3c80aff88f89b31c53f26c2903b89",
-                "reference": "69a06ae8b3d3c80aff88f89b31c53f26c2903b89",
+                "url": "https://api.github.com/repos/andydefer/storage-kit/zipball/78d3e8f814c4237fea7b75b688fdb0b86925aee4",
+                "reference": "78d3e8f814c4237fea7b75b688fdb0b86925aee4",
                 "shasum": ""
             },
             "require": {
-                "andydefer/php-jsonl": "^0.9.1",
+                "andydefer/php-jsonl": "^0.10.0",
                 "php": ">=8.1",
                 "phpfastcache/phpfastcache": "^9.2"
             },
@@ -250,9 +250,9 @@
             "description": "Storage adapters : Memory, JSONL, and Cache",
             "support": {
                 "issues": "https://github.com/andydefer/storage-kit/issues",
-                "source": "https://github.com/andydefer/storage-kit/tree/v0.6.0"
+                "source": "https://github.com/andydefer/storage-kit/tree/v0.7.0"
             },
-            "time": "2026-07-09T15:07:48+00:00"
+            "time": "2026-07-09T15:20:48+00:00"
         },
         {
             "name": "phpfastcache/phpfastcache",
